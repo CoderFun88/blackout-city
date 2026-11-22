@@ -28,19 +28,21 @@ jobs:
         with:
           gradle-version: '8.9'
       - name: Extract game project
-        run: unzip -o blackout_city_build19_cloud_apk.zip -d game
-      - name: Bundle classic Three.js for Android WebView
+        run: unzip -o blackout_city_build20_cloud_apk.zip -d game
+      - name: Download legacy UMD Three.js for WebView
         run: |
+          mkdir -p game/app/src/main/assets
           curl --fail --location --retry 3 \
-            https://raw.githubusercontent.com/mrdoob/three.js/r160/build/three.min.js \
+            https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js \
             --output game/app/src/main/assets/three.min.js
           test -s game/app/src/main/assets/three.min.js
           test "$(wc -c < game/app/src/main/assets/three.min.js)" -gt 100000
+          if grep -q 'export {' game/app/src/main/assets/three.min.js; then echo 'Expected classic UMD build, got ES module'; exit 1; fi
       - name: Build APK
         run: gradle -p game assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: BLACKOUT-CITY-APK-BUILD19
+          name: BLACKOUT-CITY-APK-BUILD20
           path: game/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
