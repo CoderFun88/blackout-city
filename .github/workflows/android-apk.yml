@@ -1,0 +1,45 @@
+name: Build BLACKOUT CITY APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | sort -V | tail -n 1)"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Extract game project
+        run: unzip -o blackout_city_build18_cloud_apk.zip -d game
+      - name: Bundle Three.js locally for offline runtime
+        run: |
+          curl --fail --location --retry 3 \
+            https://raw.githubusercontent.com/mrdoob/three.js/r160/build/three.module.js \
+            --output game/app/src/main/assets/three.module.js
+          test -s game/app/src/main/assets/three.module.js
+      - name: Build APK
+        run: gradle -p game assembleDebug
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BLACKOUT-CITY-APK-BUILD18
+          path: game/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
